@@ -39,3 +39,7 @@
 
 # debug information files
 *.dwo
+
+# clion ide
+*.idea
+CMakeLists.txt
