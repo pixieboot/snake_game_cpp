@@ -3,8 +3,11 @@
 #include <termios.h>
 #include <unistd.h>
 
-// Randomizes the type of fruit string (visually)
-// NOTE: might add different points system depending on the fruit type
+/* Randomizes the type of fruit string (visually)
+ *
+ * @param const int: random integer between 1 and 6 for the fruit type to be returned
+ * NOTE: might add different points system depending on the fruit type
+*/
 char getRandFruitType(const int x)
 {
     switch (x)
@@ -26,9 +29,9 @@ char getRandFruitType(const int x)
  *  NOTE: in the future refine the logic to base the randomness of the fruit
  *  from the player pos which should reduce the if checking statement
  *
- *  @param &area_dimensions: std::pair consisting of X and Y dimensions for the area
- *  @param &player_position: std::pair consisting of X and Y coordinates of the player
- *  @return: randomized fruit X and Y coordinates based of the parameters
+ *  @param std::pair<int, int>& area_dimensions: std::pair consisting of X and Y dimensions for the area
+ *  @param std::pair<int, int>& player_position: std::pair consisting of X and Y coordinates of the player
+ *  @return std::pair<int, int>: randomized fruit X and Y coordinates based of the parameters
  */
 std::pair<int, int> getRandFruitPos(const std::pair<int, int>& area_dimensions,
                                     const std::pair<int, int>& player_position)
@@ -50,8 +53,8 @@ std::pair<int, int> getRandFruitPos(const std::pair<int, int>& area_dimensions,
 
 /* Spawns the player on a random location based of the area dimensions
  *
- * @param: area dimensions X and Y
- * @returns: random player X and Y coordinates
+ * @param std::pair<int, int> &area_dimensions: area dimensions of X and Y
+ * @returns std::pair<int, int>: random player X and Y coordinates
  */
 std::pair<int, int> initPlayerPos(const std::pair<int, int>& area_dimensions)
 {
@@ -77,7 +80,7 @@ std::string_view player()
  *  is within the area where it needs to be printed in the middle of the screen
  *
  *  @param i & j: for loop iterators
- *  @param &area_dimensions: std::pair consisting of X and Y coordinates of area
+ *  @param std::pair<int, int>& area_dimensions: std::pair consisting of X and Y coordinates of area
  *  @param std::string_view text: text that will be calculated to fit in the middle of the screen with text.size()
  *  @param int is_game_over_text: is the text "GAME OVER", alignment purposes with if statement
  *  @return bool: bool if the given text is in the area where it needs to be printed
@@ -112,7 +115,7 @@ bool alignGameOverText(
  *  should it start printing the text in the middle of the screen
  *
  *  @param i & j: for loop iterators
- *  @param &area_dimensions: std::pair consisting of X and Y coordinates of area
+ *  @param std::pair<int, int>& area_dimensions: std::pair consisting of X and Y coordinates of area
  *  @param int points: points to be printed alongside text
  *  @return char: returns a char that needs to be printer to the called
  */
@@ -201,7 +204,12 @@ char renderCells(
     return ' ';
 }
 
-std::string_view renderPoints(const int p)
+/*  Displays player collected points on runtime
+
+ *  @param const int: points num passed
+ *  @return void: uses std::cout
+ */
+void showPoints(const int p)
 {
     if (p > 999)
     {
@@ -211,14 +219,25 @@ std::string_view renderPoints(const int p)
     {
         std::cout << "Points: " << p << '\n';
     }
-    return "???";
 }
 
+/*  Renders (std::couts) entire screen with for loops
+ *
+ *  @param i & j: for loop iterators
+ *  @param std::pair<int, int>& player_position: X and Y coordinates of area
+ *  @param std::pair<int, int>& area_dimensions: X and Y coordinates of the player
+ *  @param std::pair<int, int>& fruit_position: X and Y coordinates of the spawned fruit
+ *  @param std::string_view: shows the player figure
+ *  @param int points: passed points from main
+ *  @param bool game_over_status: true or false if the game is over
+ *
+ *  @return void
+ */
 void renderArea(
     const std::pair<int, int>& area_dimensions,
     const std::pair<int, int>& player_position,
-    const std::string_view display_player,
     const std::pair<int, int>& fruit_position,
+    const std::string_view display_player,
     const char fruit_type,
     const int points,
     const bool game_over_status)
@@ -232,7 +251,7 @@ void renderArea(
 
     system("clear");
 
-    renderPoints(points);
+    showPoints(points);
     for (int i = 0; i < a_height; i++)
     {
         for (int j = 0; j < a_width; j++)
@@ -246,9 +265,9 @@ void renderArea(
 
 /* Checks if the fruit location is the same as player location
  *
- *  @param &player_position: std::pair consisting of X and Y coordinates of the player
- *  @param &fruit_position: std::pair consisting of X and Y coordinates of the fruit spawn
- *  @return: true or false
+ *  @param std::pair<int, int>& player_position: std::pair consisting of X and Y coordinates of the player
+ *  @param std::pair<int, int>& fruit_position: std::pair consisting of X and Y coordinates of the fruit spawn
+ *  @return: true or false if the fruit has been eaten
  */
 bool isFruitEaten(
     const std::pair<int, int>& player_position,
@@ -272,6 +291,8 @@ bool isFruitEaten(
 
 /* Sets the terminal buffer to unbuffered mode for
  * non-blocking user input when the snake is controlled
+ *
+ * @return void;
  */
 void setUnbufferedInput()
 {
@@ -292,9 +313,9 @@ void setUnbufferedInput()
 
 /*  Checks if player has reached the edges of the area walls
  *
- *  @param &player_position: std::pair consisting of X and Y coordinates of the player
- *  @param &area_dimensions: std::pair consisting of X and Y dimensions for the area
- *  @return: bool
+ *  @param std::pair<int, int>& player_position: std::pair consisting of X and Y coordinates of the player
+ *  @param std::pair<int, int>& area_dimensions: std::pair consisting of X and Y dimensions for the area
+ *  @return: true or false if the player has collided with the wall
  */
 bool checkForCollisions(const std::pair<int, int>& player_position, const std::pair<int, int>& area_dimensions)
 {
@@ -337,7 +358,7 @@ int main()
     bool game_over_status = false;
 
     // init first render view
-    renderArea(area_dimensions, player_position, display_player, fruit_position, fruit_type, points, game_over_status);
+    renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points, game_over_status);
 
     while (true)
     {
@@ -355,7 +376,7 @@ int main()
                 fruit_type = getRandFruitType(Random::get(1, 6));
                 fruit_position = getRandFruitPos(area_dimensions, player_position);
             }
-            renderArea(area_dimensions, player_position, display_player, fruit_position, fruit_type, points,
+            renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points,
                        game_over_status);
         }
         else if (c == 115) // s key
@@ -371,7 +392,7 @@ int main()
                 fruit_type = getRandFruitType(Random::get(1, 6));
                 fruit_position = getRandFruitPos(area_dimensions, player_position);
             }
-            renderArea(area_dimensions, player_position, display_player, fruit_position, fruit_type, points,
+            renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points,
                        game_over_status);
         }
         else if (c == 97) // a key
@@ -387,7 +408,7 @@ int main()
                 fruit_type = getRandFruitType(Random::get(1, 6));
                 fruit_position = getRandFruitPos(area_dimensions, player_position);
             }
-            renderArea(area_dimensions, player_position, display_player, fruit_position, fruit_type, points,
+            renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points,
                        game_over_status);
         }
         else if (c == 100) // d key
@@ -403,7 +424,7 @@ int main()
                 fruit_type = getRandFruitType(Random::get(1, 6));
                 fruit_position = getRandFruitPos(area_dimensions, player_position);
             }
-            renderArea(area_dimensions, player_position, display_player, fruit_position, fruit_type, points,
+            renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points,
                        game_over_status);
         }
         if (game_over_status)
