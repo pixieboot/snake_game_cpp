@@ -3,6 +3,27 @@
 #include <termios.h>
 #include <unistd.h>
 
+// If debug mode is set to true it will print the current runtime values
+void showDebugStats(
+    const std::pair<int, int>& area_dimensions,
+    const std::vector<std::pair<int, int>>& player_position,
+    const std::pair<int, int>& fruit_position,
+    const char fruit_type,
+    const bool game_over_status)
+{
+    std::cout << "AREA > X[" << area_dimensions.first << "] Y[" << area_dimensions.second << "]\n";
+    std::cout << "FRUIT > X[" << fruit_position.first << "] Y[" << fruit_position.second << "] | ";
+    std::cout << "TYPE > [" << fruit_type << "]\n\n";
+    std::cout << "PLAYER\n";
+    std::cout << "---------------------\n";
+    for (int i = 0; i < player_position.size(); ++i)
+    {
+        std::cout << "NODE [" << i << "] > X[" << player_position[i].first << "] Y[" << player_position[i].second <<
+            "]\n";
+    }
+    std::cout << "\nGAME OVER > [" << game_over_status << "]\n";
+}
+
 /* Randomizes the type of fruit string (visually)
  *
  * @param const int: random integer between 1 and 6 for the fruit type to be returned
@@ -43,7 +64,7 @@ std::pair<int, int> getRandFruitPos(const std::pair<int, int>& area_dimensions,
 
     int f_x = Random::get(1, (a_width - 1));
     int f_y = Random::get(1, (a_height - 1));
-    if (p_x == f_x && p_y == f_y)
+    if (!(a_width == f_x && a_height == f_y))
     {
         f_x = a_width - Random::get(1, (a_width - 1) / 2);
         f_y = a_height - Random::get(1, (a_height - 1) / 2);
@@ -62,18 +83,6 @@ std::pair<int, int> initPlayerPos(const std::pair<int, int>& area_dimensions)
     const int a_height = area_dimensions.second;
 
     return std::make_pair(Random::get(2, a_width - 2), Random::get(2, a_height - 2));
-}
-
-std::string_view player()
-{
-    // std::string player {"0"};
-    // for (int i = 0; i < p; i++)
-    // {
-    //     player = player + "o";
-    // }
-    // return player;
-
-    return "0";
 }
 
 /*  Calculates given text.size to return boolean if the given text
@@ -151,7 +160,7 @@ char renderCells(
     const int i,
     const int j,
     const std::pair<int, int>& area_dimensions,
-    const std::pair<int, int>& player_position,
+    const std::vector<std::pair<int, int>>& player_position,
     const std::pair<int, int>& fruit_position,
     const char fruit_type,
     const bool game_over_status,
@@ -159,9 +168,6 @@ char renderCells(
 {
     const int a_width = area_dimensions.first;
     const int a_height = area_dimensions.second;
-
-    const int p_x = player_position.first;
-    const int p_y = player_position.second;
 
     const int f_x = fruit_position.first;
     const int f_y = fruit_position.second;
@@ -191,15 +197,18 @@ char renderCells(
     {
         return fruit_type;
     }
-    // player
-    if (j == p_x && i == p_y)
-    {
-        return 'P';
-    }
     // check if its game over and print game over stats
     if (game_over_status)
     {
         return showGameOverStats(i, j, area_dimensions, points);
+    }
+    // player
+    for (const auto& [p_x, p_y] : player_position)
+    {
+        if (p_x == j && p_y == i)
+        {
+            return 'o';
+        }
     }
     return ' ';
 }
@@ -235,12 +244,12 @@ void showPoints(const int p)
  */
 void renderArea(
     const std::pair<int, int>& area_dimensions,
-    const std::pair<int, int>& player_position,
+    const std::vector<std::pair<int, int>>& player_position,
     const std::pair<int, int>& fruit_position,
-    const std::string_view display_player,
     const char fruit_type,
     const int points,
-    const bool game_over_status)
+    const bool game_over_status,
+    const bool debug_mode)
 {
     const int a_width = area_dimensions.first;
     const int a_height = area_dimensions.second;
@@ -250,7 +259,11 @@ void renderArea(
     // std::cout << CLEAR_SCREEN;
 
     system("clear");
-
+    if (debug_mode)
+    {
+        showDebugStats(area_dimensions, player_position, fruit_position, fruit_type,
+                       game_over_status);
+    }
     showPoints(points);
     for (int i = 0; i < a_height; i++)
     {
@@ -333,22 +346,33 @@ bool checkForCollisions(const std::pair<int, int>& player_position, const std::p
     return false;
 }
 
+std::vector<std::pair<int, int>> updateSnakeBody(const std::vector<std::pair<int, int>>& snake_body,
+                                                 const int points)
+{
+    std::vector<std::pair<int, int>> updated_snake_body{snake_body[0]};
+    for (int i = 0; i <= points; i++)
+    {
+        updated_snake_body.push_back({snake_body[i]});
+    }
+    return updated_snake_body;
+}
+
 int main()
 {
     // set terminal settings for unbuffered input
     setUnbufferedInput();
 
+    // set debug mode
+    const bool debug_mode = false;
+
     // init area dimensions 80x21
     constexpr std::pair<int, int> area_dimensions = std::make_pair(80, 21);
 
-    // init random player position
-    std::pair<int, int> player_position = initPlayerPos(area_dimensions);
+    // snake length initialized with player spawn position
+    std::vector<std::pair<int, int>> snake_body{initPlayerPos(area_dimensions)};
 
-    // show player
-    const std::string_view display_player = player();
-
-    // init random fruit type and position
-    std::pair<int, int> fruit_position = getRandFruitPos(area_dimensions, player_position);
+    // init random fruit type and position // change later for the whole body checking
+    std::pair<int, int> fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
     char fruit_type = getRandFruitType(Random::get(1, 6));
 
     // init points
@@ -358,74 +382,86 @@ int main()
     bool game_over_status = false;
 
     // init first render view
-    renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points, game_over_status);
+    renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points, game_over_status, debug_mode);
 
     while (true)
     {
         const unsigned char c = getchar();
         if (c == 119) // w key
         {
-            player_position.second -= 1; // player position: y-1
-            if (const bool is_game_over = checkForCollisions(player_position, area_dimensions); is_game_over == true)
+            snake_body[0].second -= 1; // player position: y-1
+            if (const bool is_fruit_eaten = isFruitEaten(snake_body[0], fruit_position); is_fruit_eaten == true)
+            {
+                points++;
+                snake_body.emplace_back(snake_body[0].first, snake_body[0].second);
+                snake_body = updateSnakeBody(snake_body, points);
+                fruit_type = getRandFruitType(Random::get(1, 6));
+                fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
+            }
+            if (const bool is_game_over = checkForCollisions(snake_body[0], area_dimensions); is_game_over == true)
             {
                 game_over_status = true;
             }
-            if (const bool is_fruit_eaten = isFruitEaten(player_position, fruit_position); is_fruit_eaten == true)
-            {
-                points++;
-                fruit_type = getRandFruitType(Random::get(1, 6));
-                fruit_position = getRandFruitPos(area_dimensions, player_position);
-            }
-            renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points,
-                       game_over_status);
+            snake_body = updateSnakeBody(snake_body, points);
+            renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points,
+                       game_over_status, debug_mode);
         }
         else if (c == 115) // s key
         {
-            player_position.second += 1; // player position: y+1
-            if (const bool is_game_over = checkForCollisions(player_position, area_dimensions); is_game_over == true)
+            snake_body[0].second += 1; // player position: y+1
+            if (const bool is_fruit_eaten = isFruitEaten(snake_body[0], fruit_position); is_fruit_eaten == true)
+            {
+                points++;
+                snake_body.emplace_back(snake_body[0].first, snake_body[0].second);
+                snake_body = updateSnakeBody(snake_body, points);
+                fruit_type = getRandFruitType(Random::get(1, 6));
+                fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
+            }
+            if (const bool is_game_over = checkForCollisions(snake_body[0], area_dimensions); is_game_over == true)
             {
                 game_over_status = true;
             }
-            if (const bool is_fruit_eaten = isFruitEaten(player_position, fruit_position); is_fruit_eaten == true)
-            {
-                points++;
-                fruit_type = getRandFruitType(Random::get(1, 6));
-                fruit_position = getRandFruitPos(area_dimensions, player_position);
-            }
-            renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points,
-                       game_over_status);
+            snake_body = updateSnakeBody(snake_body, points);
+            renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points,
+                       game_over_status, debug_mode);
         }
         else if (c == 97) // a key
         {
-            player_position.first -= 1; // player position: x-1
-            if (const bool is_game_over = checkForCollisions(player_position, area_dimensions); is_game_over == true)
+            snake_body[0].first -= 1; // player position: x-1
+            if (const bool is_fruit_eaten = isFruitEaten(snake_body[0], fruit_position); is_fruit_eaten == true)
+            {
+                points++;
+                snake_body.emplace_back(snake_body[0].first, snake_body[0].second);
+                snake_body = updateSnakeBody(snake_body, points);
+                fruit_type = getRandFruitType(Random::get(1, 6));
+                fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
+            }
+            if (const bool is_game_over = checkForCollisions(snake_body[0], area_dimensions); is_game_over == true)
             {
                 game_over_status = true;
             }
-            if (const bool is_fruit_eaten = isFruitEaten(player_position, fruit_position); is_fruit_eaten == true)
-            {
-                points++;
-                fruit_type = getRandFruitType(Random::get(1, 6));
-                fruit_position = getRandFruitPos(area_dimensions, player_position);
-            }
-            renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points,
-                       game_over_status);
+            snake_body = updateSnakeBody(snake_body, points);
+            renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points,
+                       game_over_status, debug_mode);
         }
         else if (c == 100) // d key
         {
-            player_position.first += 1; // player position: x+1
-            if (const bool is_game_over = checkForCollisions(player_position, area_dimensions); is_game_over == true)
+            snake_body[0].first += 1; // player position: x+1
+            if (const bool is_fruit_eaten = isFruitEaten(snake_body[0], fruit_position); is_fruit_eaten == true)
+            {
+                points++;
+                snake_body.emplace_back(snake_body[0].first, snake_body[0].second);
+                snake_body = updateSnakeBody(snake_body, points);
+                fruit_type = getRandFruitType(Random::get(1, 6));
+                fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
+            }
+            if (const bool is_game_over = checkForCollisions(snake_body[0], area_dimensions); is_game_over == true)
             {
                 game_over_status = true;
             }
-            if (const bool is_fruit_eaten = isFruitEaten(player_position, fruit_position); is_fruit_eaten == true)
-            {
-                points++;
-                fruit_type = getRandFruitType(Random::get(1, 6));
-                fruit_position = getRandFruitPos(area_dimensions, player_position);
-            }
-            renderArea(area_dimensions, player_position, fruit_position, display_player, fruit_type, points,
-                       game_over_status);
+            snake_body = updateSnakeBody(snake_body, points);
+            renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points,
+                       game_over_status, debug_mode);
         }
         if (game_over_status)
         {
