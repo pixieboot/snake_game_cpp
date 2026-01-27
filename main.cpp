@@ -58,16 +58,13 @@ char getRandFruitType(const int x)
  *  @param std::pair<int, int>& player_position: std::pair consisting of X and Y coordinates of the player
  *  @return std::pair<int, int>: randomized fruit X and Y coordinates based of the parameters
  */
-std::pair<int, int> getRandFruitPos(const std::pair<int, int>& area_dimensions,
-                                    const std::pair<int, int>& player_position)
+std::pair<int, int> getRandFruitPos(const std::pair<int, int>& area_dimensions)
 {
     const int a_width = area_dimensions.first;
     const int a_height = area_dimensions.second;
-    const int p_x = player_position.first;
-    const int p_y = player_position.second;
 
-    int f_x = Random::get(1, (a_width - 1));
-    int f_y = Random::get(1, (a_height - 1));
+    int f_x = Random::get(1, a_width - 1);
+    int f_y = Random::get(1, a_height - 1);
     if (!(a_width == f_x && a_height == f_y))
     {
         f_x = Random::get(1, (a_width - 1) / 2);
@@ -117,7 +114,7 @@ bool alignGameOverText(
     }
     else // "Points: x" alignment
     {
-        row = (a_height / 2) + 1;
+        row = a_height / 2 + 1;
     }
 
     return i == row && j >= text_size && j < text_size + static_cast<int>(text.size());
@@ -139,7 +136,6 @@ char showGameOverStats(
     const int points)
 {
     const int a_width = area_dimensions.first;
-    const int a_height = area_dimensions.second;
 
     constexpr const std::string_view game_over_text = "GAME OVER";
     const std::string_view points_text = "Points: " + std::to_string(points); // look for a better solution later
@@ -300,10 +296,7 @@ bool isFruitEaten(
     {
         return true;
     }
-    else
-    {
-        return false;
-    }
+    return false;
 }
 
 
@@ -314,7 +307,7 @@ bool isFruitEaten(
  */
 void setUnbufferedInput()
 {
-    struct termios old_tio{}, new_tio{};
+    termios old_tio{}, new_tio{};
 
     // get the terminal settings for stdin
     tcgetattr(STDIN_FILENO, &old_tio);
@@ -370,10 +363,10 @@ int main()
     constexpr std::pair<int, int> area_dimensions = std::make_pair(80, 21);
 
     // snake length initialized with player spawn position
-    std::vector<std::pair<int, int>> snake_body{initPlayerPos(area_dimensions)};
+    std::vector snake_body{initPlayerPos(area_dimensions)};
 
     // init random fruit type and position // change later for the whole body checking
-    std::pair<int, int> fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
+    std::pair<int, int> fruit_position = getRandFruitPos(area_dimensions);
     char fruit_type = getRandFruitType(Random::get(1, 6));
 
     // init points
@@ -389,7 +382,7 @@ int main()
     while (true)
     {
         std::pair<int, int> temp = {snake_body[0].first, snake_body[0].second};
-        switch (const unsigned char c = getchar())
+        switch (getchar())
         {
         // W key
         case 119:
@@ -418,7 +411,7 @@ int main()
         {
             points++;
             fruit_type = getRandFruitType(Random::get(1, 6));
-            fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
+            fruit_position = getRandFruitPos(area_dimensions);
             snake_body.emplace_back(temp);
         }
         if (points)
