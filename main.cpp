@@ -74,7 +74,6 @@ std::pair<int, int> getRandFruitPos(const std::pair<int, int>& area_dimensions,
         f_y = Random::get(1, (a_height - 1) / 2);
     }
     return std::make_pair(f_x, f_y);
-    // return std::make_pair(3, 3);
 }
 
 /* Spawns the player on a random location based of the area dimensions
@@ -180,7 +179,7 @@ char renderCells(
     // top
     if (i == 0 && j > 0 && j < a_width - 1)
     {
-        return '-';
+        return '^';
     }
     // bottom
     if (i == a_height - 1 && j > 0 && j < a_width - 1)
@@ -364,12 +363,10 @@ int main()
     constexpr std::pair<int, int> area_dimensions = std::make_pair(80, 21);
 
     // snake length initialized with player spawn position
-    // std::vector<std::pair<int, int>> snake_body{initPlayerPos(area_dimensions)};
-    std::vector<std::pair<int, int>> snake_body{{2, 2}};
+    std::vector<std::pair<int, int>> snake_body{initPlayerPos(area_dimensions)};
 
     // init random fruit type and position // change later for the whole body checking
-    // std::pair<int, int> fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
-    std::pair<int, int> fruit_position = getRandFruitPos(area_dimensions, {2, 2});
+    std::pair<int, int> fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
     char fruit_type = getRandFruitType(Random::get(1, 6));
 
     // init points
