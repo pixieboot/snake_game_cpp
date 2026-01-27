@@ -8,10 +8,10 @@
 void showDebugStats(
     const std::pair<int, int>& area_dimensions,
     const std::vector<std::pair<int, int>>& player_position,
+    const std::pair<int, int>& temp,
     const std::pair<int, int>& fruit_position,
     const char fruit_type,
-    const bool game_over_status,
-    const std::pair<int, int>& temp)
+    const bool game_over_status)
 {
     std::cout << "AREA > X[" << area_dimensions.first << "] Y[" << area_dimensions.second << "]\n";
     std::cout << "FRUIT > X[" << fruit_position.first << "] Y[" << fruit_position.second << "] | ";
@@ -249,12 +249,12 @@ void showPoints(const int p)
 void renderArea(
     const std::pair<int, int>& area_dimensions,
     const std::vector<std::pair<int, int>>& player_position,
+    const std::pair<int, int>& temp,
     const std::pair<int, int>& fruit_position,
     const char fruit_type,
     const int points,
     const bool game_over_status,
-    const bool debug_mode,
-    const std::pair<int, int>& temp)
+    const bool debug_mode)
 {
     const int a_width = area_dimensions.first;
     const int a_height = area_dimensions.second;
@@ -266,8 +266,8 @@ void renderArea(
     system("clear");
     if (debug_mode)
     {
-        showDebugStats(area_dimensions, player_position, fruit_position, fruit_type,
-                       game_over_status, temp);
+        showDebugStats(area_dimensions, player_position, temp, fruit_position, fruit_type,
+                       game_over_status);
     }
     showPoints(points);
     for (int i = 0; i < a_height; i++)
@@ -335,10 +335,11 @@ void setUnbufferedInput()
  *  @param std::pair<int, int>& area_dimensions: std::pair consisting of X and Y dimensions for the area
  *  @return: true or false if the player has collided with the wall
  */
-bool checkForCollisions(const std::pair<int, int>& player_position, const std::pair<int, int>& area_dimensions)
+bool checkForCollisions(const std::vector<std::pair<int, int>>& player_position,
+                        const std::pair<int, int>& area_dimensions)
 {
-    const int p_x = player_position.first;
-    const int p_y = player_position.second;
+    const int p_x = player_position[0].first;
+    const int p_y = player_position[0].second;
 
     const int a_width = area_dimensions.first;
     const int a_height = area_dimensions.second;
@@ -347,7 +348,13 @@ bool checkForCollisions(const std::pair<int, int>& player_position, const std::p
     {
         return true;
     }
-    // else if (player_pos_x == player_pos_x) CHECK IF PLAYER EATS ITS OWN TAIL
+    for (int i = 1; i < player_position.size(); i++)
+    {
+        if (player_position[i].first == p_x && player_position[i].second == p_y)
+        {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -357,7 +364,7 @@ int main()
     setUnbufferedInput();
 
     // set debug mode
-    const bool debug_mode = true;
+    constexpr bool debug_mode = true;
 
     // init area dimensions 80x21
     constexpr std::pair<int, int> area_dimensions = std::make_pair(80, 21);
@@ -376,7 +383,8 @@ int main()
     bool game_over_status = false;
 
     // init first render view
-    renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points, game_over_status, debug_mode, {0, 0});
+    renderArea(area_dimensions, snake_body, {0, 0}, fruit_position, fruit_type, points,
+               game_over_status, debug_mode);
 
     while (true)
     {
@@ -402,7 +410,7 @@ int main()
         default: ;
         }
 
-        if (checkForCollisions(snake_body[0], area_dimensions))
+        if (checkForCollisions(snake_body, area_dimensions))
         {
             game_over_status = true;
         }
@@ -424,8 +432,8 @@ int main()
             // 2 identical nodes (0 and 1) and would not render on 1st point but instead from 2nd
             snake_body[1] = temp;
         }
-        renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points,
-                   game_over_status, debug_mode, temp);
+        renderArea(area_dimensions, snake_body, temp, fruit_position, fruit_type, points,
+                   game_over_status, debug_mode);
         if (game_over_status) break;
     }
     return 0;
