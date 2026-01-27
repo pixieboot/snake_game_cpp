@@ -2,7 +2,6 @@
 #include <iostream>
 #include <termios.h>
 #include <unistd.h>
-#include <vector>
 
 // If debug mode is set to true it will print the current runtime values
 void showDebugStats(
@@ -138,7 +137,7 @@ char showGameOverStats(
     const int a_width = area_dimensions.first;
 
     constexpr const std::string_view game_over_text = "GAME OVER";
-    const std::string_view points_text = "Points: " + std::to_string(points); // look for a better solution later
+    const std::string points_text = "Points: " + std::to_string(points);
 
     // prints "GAME OVER"
     if (alignGameOverText(i, j, area_dimensions, game_over_text, 1))
@@ -203,9 +202,13 @@ char renderCells(
         return showGameOverStats(i, j, area_dimensions, points);
     }
     // player
-    for (const auto& [p_x, p_y] : player_position)
+    for (int s = 0; s < player_position.size(); s++)
     {
-        if (p_x == j && p_y == i)
+        if (player_position[0].first == j && player_position[0].second == i)
+        {
+            return 'O';
+        }
+        if (player_position[s].first == j && player_position[s].second == i)
         {
             return 'o';
         }
