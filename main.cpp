@@ -10,7 +10,8 @@ void showDebugStats(
     const std::vector<std::pair<int, int>>& player_position,
     const std::pair<int, int>& fruit_position,
     const char fruit_type,
-    const bool game_over_status)
+    const bool game_over_status,
+    const std::pair<int, int>& temp)
 {
     std::cout << "AREA > X[" << area_dimensions.first << "] Y[" << area_dimensions.second << "]\n";
     std::cout << "FRUIT > X[" << fruit_position.first << "] Y[" << fruit_position.second << "] | ";
@@ -22,6 +23,8 @@ void showDebugStats(
         std::cout << "NODE [" << i << "] > X[" << player_position[i].first << "] Y[" << player_position[i].second <<
             "]\n";
     }
+
+    std::cout << "\nTEMP INDEX 0 POS: X:[" << temp.first << "] Y:[" << temp.second << "]\n";
     std::cout << "\nGAME OVER > [" << game_over_status << "]\n";
 }
 
@@ -251,7 +254,8 @@ void renderArea(
     const char fruit_type,
     const int points,
     const bool game_over_status,
-    const bool debug_mode)
+    const bool debug_mode,
+    const std::pair<int, int>& temp)
 {
     const int a_width = area_dimensions.first;
     const int a_height = area_dimensions.second;
@@ -264,7 +268,7 @@ void renderArea(
     if (debug_mode)
     {
         showDebugStats(area_dimensions, player_position, fruit_position, fruit_type,
-                       game_over_status);
+                       game_over_status, temp);
     }
     showPoints(points);
     for (int i = 0; i < a_height; i++)
@@ -375,10 +379,11 @@ int main()
     bool game_over_status = false;
 
     // init first render view
-    renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points, game_over_status, debug_mode);
+    renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points, game_over_status, debug_mode, {0, 0});
 
     while (true)
     {
+        std::pair<int, int> temp = {snake_body[0].first, snake_body[0].second};
         switch (const unsigned char c = getchar())
         {
         // W key
@@ -409,15 +414,21 @@ int main()
             points++;
             fruit_type = getRandFruitType(Random::get(1, 6));
             fruit_position = getRandFruitPos(area_dimensions, snake_body[0]);
-            snake_body.insert(snake_body.begin(), {snake_body[0].first, snake_body[0].second});
+            snake_body.emplace_back(temp);
         }
-        for (int i = points; i > 0; --i)
+        if (points)
         {
-            snake_body[i] = snake_body[i - 1];
+            for (int i = points; i > 0; --i)
+            {
+                snake_body[i] = snake_body[i - 1];
+            }
+            // when arr is shifted to the right, we need to insert temp to the 1st index
+            // of the arr to have proper display and update of nodes, otherwise we'd have
+            // 2 identical nodes (0 and 1) and would not render on 1st point but instead from 2nd
+            snake_body[1] = temp;
         }
-        // snake_body[0] = snake_body[];
         renderArea(area_dimensions, snake_body, fruit_position, fruit_type, points,
-                   game_over_status, debug_mode);
+                   game_over_status, debug_mode, temp);
         if (game_over_status) break;
     }
     return 0;
