@@ -171,25 +171,24 @@ char renderCells(
     const int f_x = fruit_position.first;
     const int f_y = fruit_position.second;
 
-    // top
-    if (i == 0 && j > 0 && j < a_width - 1)
+    // corners
+    if (
+        (j == 0 && i == 0) ||
+        (j == 0 && i == a_height - 1) ||
+        (j == a_width - 1 && i == 0) ||
+        (j == a_width - 1 && i == a_height - 1))
     {
-        return '^';
+        return '+';
     }
-    // bottom
-    if (i == a_height - 1 && j > 0 && j < a_width - 1)
+    // top & bottom
+    if (i == 0 || i == a_height - 1)
     {
-        return 'v';
+        return '-';
     }
-    // left
-    if (j == 0)
+    // left & right
+    if (j == 0 || j == a_width - 1)
     {
-        return '<';
-    }
-    // right
-    if (j == a_width - 1)
-    {
-        return '>';
+        return '|';
     }
     // fruit
     if (j == f_x && i == f_y)
