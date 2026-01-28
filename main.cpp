@@ -2,7 +2,6 @@
 #include <iostream>
 #include <termios.h>
 #include <unistd.h>
-#include <time.h>
 
 constexpr int w_key = 119;
 constexpr int s_key = 115;
@@ -15,7 +14,15 @@ constexpr int d_key = 100;
 // constexpr int arrow_left = 68;
 // constexpr int arrow_right = 67;
 
-// If debug mode is set to true it will print the current runtime values
+// global terminal settings
+termios orig_termios;
+
+/*
+ * Debugging mode with couts, if debug mode is set to "true"
+ * it will print the current runtime values
+ *
+ * @returns void;
+ */
 void showDebugStats(
     const std::pair<int, int>& area_dimensions,
     const std::vector<std::pair<int, int>>& player_position,
@@ -39,7 +46,8 @@ void showDebugStats(
     std::cout << "\nGAME OVER > [" << game_over_status << "]\n";
 }
 
-/* Randomizes the type of fruit string (visually)
+/*
+ * Randomizes the type of fruit string (visually)
  *
  * @param const int: random integer between 1 and 6 for the fruit type to be returned
  * NOTE: might add different points system depending on the fruit type
@@ -58,7 +66,8 @@ char getRandFruitType(const int x)
     }
 }
 
-/*  Spawns a fruit in a random spot, also checks if the fruit
+/*
+ *  Spawns a fruit in a random spot, also checks if the fruit
  *  and the player are in the same position, if so the fruit
  *  spawn coordinates will be re-randomized
  *
@@ -84,7 +93,8 @@ std::pair<int, int> getRandFruitPos(const std::pair<int, int>& area_dimensions)
     return std::make_pair(f_x, f_y);
 }
 
-/* Spawns the player on a random location based of the area dimensions
+/*
+ * Spawns the player on a random location based of the area dimensions
  *
  * @param std::pair<int, int> &area_dimensions: area dimensions of X and Y
  * @returns std::pair<int, int>: random player X and Y coordinates
@@ -97,7 +107,8 @@ std::pair<int, int> initPlayerPos(const std::pair<int, int>& area_dimensions)
     return std::make_pair(Random::get(2, a_width - 2), Random::get(2, a_height - 2));
 }
 
-/*  Calculates given text.size to return boolean if the given text
+/*
+ *  Calculates given text.size to return boolean if the given text
  *  is within the area where it needs to be printed in the middle of the screen
  *
  *  @param i & j: for loop iterators
@@ -131,7 +142,8 @@ bool alignGameOverText(
     return i == row && j >= text_size && j < text_size + static_cast<int>(text.size());
 }
 
-/*  Returns chars of strings to display game over text status at the
+/*
+ *  Returns chars of strings to display game over text status at the
  *  end of the game, it calls align function to check in which area
  *  should it start printing the text in the middle of the screen
  *
@@ -167,6 +179,17 @@ char showGameOverStats(
     return ' ';
 }
 
+/*
+ *  Main function for rendering characters on the screen per frame
+ *
+ *  @param i & j: for loop iterators
+ *  @param std::pair<int, int>& area_dimensions: std::pair X and Y coordinates of the area
+ *  @param std::vector<std::pair<int, int>>& player_position: vector of pairs consisting of X and Y player coordinates
+ *  @param std::pair<int, int>& fruit_position: std::pair X and Y coordinates of the fruit
+ *  @param char fruit type: randomized fruit type
+ *  @param bool game_over_status: different text will be printed depending on the game over status
+ *  @return int points: current player points
+ */
 char renderCells(
     const int i,
     const int j,
@@ -227,7 +250,8 @@ char renderCells(
     return ' ';
 }
 
-/*  Displays player collected points on runtime
+/*
+ *  Displays player collected points on runtime
 
  *  @param const int: points num passed
  *  @return void: uses std::cout
@@ -244,7 +268,8 @@ void showPoints(const int p)
     }
 }
 
-/*  Renders (std::couts) entire screen with for loops
+/*
+ *  Renders (std::couts) entire screen with for loops
  *
  *  @param i & j: for loop iterators
  *  @param std::pair<int, int>& player_position: X and Y coordinates of area
@@ -291,7 +316,8 @@ void renderArea(
     }
 }
 
-/* Checks if the fruit location is the same as player location
+/*
+ *  Checks if the fruit location is the same as player location
  *
  *  @param std::pair<int, int>& player_position: std::pair consisting of X and Y coordinates of the player
  *  @param std::pair<int, int>& fruit_position: std::pair consisting of X and Y coordinates of the fruit spawn
@@ -314,12 +340,13 @@ bool isFruitEaten(
 }
 
 
-/* Sets the terminal buffer to unbuffered mode for
+/*
+ * Sets the terminal buffer to unbuffered mode for
  * non-blocking user input when the snake is controlled
  *
  * @return void;
  */
-void setUnbufferedInput(termios& tc, const bool game_over)
+void (* setUnbufferedNonBlockingInput(termios& tc, const bool game_over))()
 {
     if (!game_over)
     {
@@ -334,9 +361,11 @@ void setUnbufferedInput(termios& tc, const bool game_over)
         // restores old terminal settings after the game finishes
         tcsetattr(STDIN_FILENO, TCSANOW, &tc);
     }
+    return nullptr;
 }
 
-/*  Checks if player has reached the edges of the area walls
+/*
+ *  Checks if player has reached the edges of the area walls
  *
  *  @param std::pair<int, int>& player_position: std::pair consisting of X and Y coordinates of the player
  *  @param std::pair<int, int>& area_dimensions: std::pair consisting of X and Y dimensions for the area
@@ -370,7 +399,8 @@ int main()
     // set terminal settings for non-blocking unbuffered input
     termios old_tc{};
     termios new_tc = old_tc; // save old terminal settings to restore it on game over
-    setUnbufferedInput(new_tc, false);
+    setUnbufferedNonBlockingInput(new_tc, false);
+    std::atexit(setUnbufferedNonBlockingInput(new_tc, false));
 
     // set debug mode
     constexpr bool debug_mode = true;
@@ -457,7 +487,7 @@ int main()
                    game_over_status, debug_mode);
         if (game_over_status)
         {
-            setUnbufferedInput(old_tc, true);
+            setUnbufferedNonBlockingInput(old_tc, true);
             break;
         }
         // sleep(1);
