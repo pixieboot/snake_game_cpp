@@ -14,9 +14,6 @@ constexpr int d_key = 100;
 // constexpr int arrow_left = 68;
 // constexpr int arrow_right = 67;
 
-// global terminal settings
-termios orig_termios;
-
 /*
  * Debugging mode with couts, if debug mode is set to "true"
  * it will print the current runtime values
@@ -29,7 +26,9 @@ void showDebugStats(
     const std::pair<int, int>& temp,
     const std::pair<int, int>& fruit_position,
     const char fruit_type,
-    const bool game_over_status)
+    const bool game_over_status,
+    const int current_direction,
+    const int current_input)
 {
     std::cout << "AREA > X[" << area_dimensions.first << "] Y[" << area_dimensions.second << "]\n";
     std::cout << "FRUIT > X[" << fruit_position.first << "] Y[" << fruit_position.second << "] | ";
@@ -42,7 +41,9 @@ void showDebugStats(
             "]\n";
     }
 
-    std::cout << "\nTEMP INDEX 0 POS: X:[" << temp.first << "] Y:[" << temp.second << "]\n";
+    std::cout << "\nTEMP INDEX 0 POS > X:[" << temp.first << "] Y:[" << temp.second << "]\n";
+    std::cout << "\nCURRENT DIRECTION > [" << current_direction << "]\n";
+    std::cout << "CURRENT KB INPUT > [" << current_input << "]\n";
     std::cout << "\nGAME OVER > [" << game_over_status << "]\n";
 }
 
@@ -272,12 +273,15 @@ void showPoints(const int p)
  *  Renders (std::couts) entire screen with for loops
  *
  *  @param i & j: for loop iterators
- *  @param std::pair<int, int>& player_position: X and Y coordinates of area
  *  @param std::pair<int, int>& area_dimensions: X and Y coordinates of the player
+ *  @param std::pair<int, int>& player_position: X and Y coordinates of area
+ *  @param std::pair<int, int>& temp: for debug purposes; shows temp of snake node
  *  @param std::pair<int, int>& fruit_position: X and Y coordinates of the spawned fruit
  *  @param std::string_view: shows the player figure
  *  @param int points: passed points from main
  *  @param bool game_over_status: true or false if the game is over
+ *  @param int current_direction: for debug purposes; shows current snake direction
+ *  @param int current_input: for debug purposes; shows current keyboard input or -1 if it's nothing
  *
  *  @return void
  */
@@ -289,7 +293,9 @@ void renderArea(
     const char fruit_type,
     const int points,
     const bool game_over_status,
-    const bool debug_mode)
+    const bool debug_mode,
+    const int current_direction,
+    const int current_input)
 {
     const int a_width = area_dimensions.first;
     const int a_height = area_dimensions.second;
@@ -302,7 +308,7 @@ void renderArea(
     if (debug_mode)
     {
         showDebugStats(area_dimensions, player_position, temp, fruit_position, fruit_type,
-                       game_over_status);
+                       game_over_status, current_direction, current_input);
     }
     showPoints(points);
     for (int i = 0; i < a_height; i++)
@@ -480,7 +486,7 @@ int main()
 
     // init first render view
     renderArea(area_dimensions, snake_body, {0, 0}, fruit_position, fruit_type, points,
-               game_over_status, debug_mode);
+               game_over_status, debug_mode, 0, 0);
 
     while (true)
     {
@@ -495,7 +501,6 @@ int main()
         {
             snake_body[0] = moveSnake(snake_body[0], current_direction);
         }
-
         if (checkForCollisions(snake_body, area_dimensions))
         {
             game_over_status = true;
@@ -520,12 +525,11 @@ int main()
             snake_body[1] = temp;
         }
         renderArea(area_dimensions, snake_body, temp, fruit_position, fruit_type, points,
-                   game_over_status, debug_mode);
+                   game_over_status, debug_mode, current_direction, c);
         if (game_over_status)
         {
             break;
         }
-        // sleep(1);
     }
     restoreTerminal(old_tc);
     return 0;
