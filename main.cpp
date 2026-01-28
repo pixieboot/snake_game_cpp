@@ -346,7 +346,7 @@ bool isFruitEaten(
  *
  * @return void;
  */
-void (* setUnbufferedNonBlockingInput(termios& tc, const bool game_over))()
+void setUnbufferedNonBlockingInput(termios& tc, const bool game_over)
 {
     if (!game_over)
     {
@@ -361,7 +361,6 @@ void (* setUnbufferedNonBlockingInput(termios& tc, const bool game_over))()
         // restores old terminal settings after the game finishes
         tcsetattr(STDIN_FILENO, TCSANOW, &tc);
     }
-    return nullptr;
 }
 
 /*
@@ -394,13 +393,23 @@ bool checkForCollisions(const std::vector<std::pair<int, int>>& player_position,
     return false;
 }
 
+/*
+ *  Exit handler for normal program termination
+ *
+ *  @return void nullptr;
+ */
+void (* atExitHandler(const termios& old_tc))()
+{
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_tc);
+    return nullptr;
+}
+
 int main()
 {
     // set terminal settings for non-blocking unbuffered input
     termios old_tc{};
     termios new_tc = old_tc; // save old terminal settings to restore it on game over
     setUnbufferedNonBlockingInput(new_tc, false);
-    std::atexit(setUnbufferedNonBlockingInput(new_tc, false));
 
     // set debug mode
     constexpr bool debug_mode = true;
@@ -491,6 +500,13 @@ int main()
             break;
         }
         // sleep(1);
+
+        const int exit_handler = std::atexit(atExitHandler(old_tc));
+        if (exit_handler)
+        {
+            std::cerr << "Registration failed\n";
+            return EXIT_FAILURE;
+        }
     }
-    return 0;
+    return EXIT_SUCCESS;
 }
