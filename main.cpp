@@ -413,6 +413,12 @@ int readInputWithTimeout(const int ms)
     return -1;
 }
 
+/*
+ *  Moves the snake based on direction input,
+ *  alters snake_body[0] (head) coordinates
+ *
+ *  @return std::pair<int, int> returns snakes index 0 updated coordinates
+ */
 std::pair<int, int> moveSnake(std::pair<int, int>& player_position, const int direction)
 {
     switch (direction)
