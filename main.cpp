@@ -339,30 +339,6 @@ bool isFruitEaten(
     return false;
 }
 
-
-/*
- * Sets the terminal buffer to unbuffered mode for
- * non-blocking user input when the snake is controlled
- *
- * @return void;
- */
-void setUnbufferedNonBlockingInput(termios& tc, const bool game_over)
-{
-    if (!game_over)
-    {
-        tcgetattr(STDIN_FILENO, &tc);
-        tc.c_lflag &= ~(ICANON | ECHO);
-        tc.c_cc[VMIN] = 0;
-        tc.c_cc[VTIME] = 0;
-        tcsetattr(STDIN_FILENO, TCSANOW, &tc);
-    }
-    else
-    {
-        // restores old terminal settings after the game finishes
-        tcsetattr(STDIN_FILENO, TCSANOW, &tc);
-    }
-}
-
 /*
  *  Checks if player has reached the edges of the area walls
  *
@@ -394,22 +370,85 @@ bool checkForCollisions(const std::vector<std::pair<int, int>>& player_position,
 }
 
 /*
- *  Exit handler for normal program termination
+ * Sets the terminal buffer to unbuffered and
+ * non-blocking mode when user controls the snake
+ *
+ * @return void;
+ */
+void enableRawMode(termios& tc)
+{
+    tcgetattr(STDIN_FILENO, &tc);
+    tc.c_lflag &= ~(ICANON | ECHO);
+    tc.c_cc[VMIN] = 0;
+    tc.c_cc[VTIME] = 0;
+    tcsetattr(STDIN_FILENO, TCSANOW, &tc);
+}
+
+/*
+ *  Restores default terminal settings that were taken
+ *  at the beginning of the program
  *
  *  @return void nullptr;
  */
-void (* atExitHandler(const termios& old_tc))()
+void restoreTerminal(const termios& tc)
 {
-    tcsetattr(STDIN_FILENO, TCSANOW, &old_tc);
-    return nullptr;
+    tcsetattr(STDIN_FILENO, TCSANOW, &tc);
+}
+
+int readInputWithTimeout(const int ms)
+{
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(STDIN_FILENO, &rfds);
+
+    timeval tv{};
+    tv.tv_sec = ms / 1000;
+    tv.tv_usec = ms % 1000 * 1000;
+
+    if (const int ready = select(STDIN_FILENO + 1, &rfds, nullptr, nullptr, &tv); ready > 0 && FD_ISSET(
+        STDIN_FILENO, &rfds))
+    {
+        return getchar();
+    }
+    return -1;
+}
+
+std::pair<int, int> moveSnake(std::pair<int, int>& player_position, const int direction)
+{
+    switch (direction)
+    {
+    // up
+    // case arrow_up:
+    case w_key:
+        player_position.second -= 1; // player position: y-1
+        break;
+    // down
+    // case arrow_down:
+    case s_key:
+        player_position.second += 1; // player position: y+1
+        break;
+    // left
+    // case arrow_left:
+    case a_key:
+        player_position.first -= 1; // player position: x-1
+        break;
+    // right
+    // case arrow_right:
+    case d_key:
+        player_position.first += 1; // player position: x+1
+        break;
+    default: break;
+    }
+    return player_position;
 }
 
 int main()
 {
     // set terminal settings for non-blocking unbuffered input
     termios old_tc{};
+    tcgetattr(STDIN_FILENO, &old_tc);
     termios new_tc = old_tc; // save old terminal settings to restore it on game over
-    setUnbufferedNonBlockingInput(new_tc, false);
+    enableRawMode(new_tc);
 
     // set debug mode
     constexpr bool debug_mode = true;
@@ -430,45 +469,27 @@ int main()
     // init game over status
     bool game_over_status = false;
 
+    // init snake direction
+    int current_direction = 0;
+
     // init first render view
     renderArea(area_dimensions, snake_body, {0, 0}, fruit_position, fruit_type, points,
                game_over_status, debug_mode);
 
-
     while (true)
     {
-        const int c = getchar();
-
+        const int c = readInputWithTimeout(180);
         std::pair temp = {snake_body[0].first, snake_body[0].second};
-
-        switch (c)
+        if (c != -1)
         {
-        // up
-        // case arrow_up:
-        case w_key:
-            // last_input = c;
-            snake_body[0].second -= 1; // player position: y-1
-            break;
-        // down
-        // case arrow_down:
-        case s_key:
-            // last_input = c;
-            snake_body[0].second += 1; // player position: y+1
-            break;
-        // left
-        // case arrow_left:
-        case a_key:
-            // last_input = c;
-            snake_body[0].first -= 1; // player position: x-1
-            break;
-        // right
-        // case arrow_right:
-        case d_key:
-            // last_input = c;
-            snake_body[0].first += 1; // player position: x+1
-            break;
-        default: break;
+            current_direction = c;
+            snake_body[0] = moveSnake(snake_body[0], c);
         }
+        else
+        {
+            snake_body[0] = moveSnake(snake_body[0], current_direction);
+        }
+
         if (checkForCollisions(snake_body, area_dimensions))
         {
             game_over_status = true;
@@ -496,17 +517,10 @@ int main()
                    game_over_status, debug_mode);
         if (game_over_status)
         {
-            setUnbufferedNonBlockingInput(old_tc, true);
             break;
         }
         // sleep(1);
-
-        const int exit_handler = std::atexit(atExitHandler(old_tc));
-        if (exit_handler)
-        {
-            std::cerr << "Registration failed\n";
-            return EXIT_FAILURE;
-        }
     }
-    return EXIT_SUCCESS;
+    restoreTerminal(old_tc);
+    return 0;
 }
