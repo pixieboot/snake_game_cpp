@@ -2,6 +2,18 @@
 #include <iostream>
 #include <termios.h>
 #include <unistd.h>
+#include <time.h>
+
+constexpr int w_key = 119;
+constexpr int s_key = 115;
+constexpr int a_key = 97;
+constexpr int d_key = 100;
+
+// to be added
+// constexpr int arrow_up = 65;
+// constexpr int arrow_down = 66;
+// constexpr int arrow_left = 68;
+// constexpr int arrow_right = 67;
 
 // If debug mode is set to true it will print the current runtime values
 void showDebugStats(
@@ -136,7 +148,7 @@ char showGameOverStats(
 {
     const int a_width = area_dimensions.first;
 
-    constexpr const std::string_view game_over_text = "GAME OVER";
+    constexpr std::string_view game_over_text = "GAME OVER";
     const std::string points_text = "Points: " + std::to_string(points);
 
     // prints "GAME OVER"
@@ -307,21 +319,21 @@ bool isFruitEaten(
  *
  * @return void;
  */
-void setUnbufferedInput()
+void setUnbufferedInput(termios& tc, const bool game_over)
 {
-    termios old_tio{}, new_tio{};
-
-    // get the terminal settings for stdin
-    tcgetattr(STDIN_FILENO, &old_tio);
-
-    // keeping the old settings to restore them at the end
-    new_tio = old_tio;
-
-    // disable buffered i/o and local echo
-    new_tio.c_lflag &= ~(ICANON | ECHO);
-
-    // set the new settings
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_tio);
+    if (!game_over)
+    {
+        tcgetattr(STDIN_FILENO, &tc);
+        tc.c_lflag &= ~(ICANON | ECHO);
+        tc.c_cc[VMIN] = 0;
+        tc.c_cc[VTIME] = 0;
+        tcsetattr(STDIN_FILENO, TCSANOW, &tc);
+    }
+    else
+    {
+        // restores old terminal settings after the game finishes
+        tcsetattr(STDIN_FILENO, TCSANOW, &tc);
+    }
 }
 
 /*  Checks if player has reached the edges of the area walls
@@ -355,8 +367,10 @@ bool checkForCollisions(const std::vector<std::pair<int, int>>& player_position,
 
 int main()
 {
-    // set terminal settings for unbuffered input
-    setUnbufferedInput();
+    // set terminal settings for non-blocking unbuffered input
+    termios old_tc{};
+    termios new_tc = old_tc; // save old terminal settings to restore it on game over
+    setUnbufferedInput(new_tc, false);
 
     // set debug mode
     constexpr bool debug_mode = true;
@@ -381,30 +395,41 @@ int main()
     renderArea(area_dimensions, snake_body, {0, 0}, fruit_position, fruit_type, points,
                game_over_status, debug_mode);
 
+
     while (true)
     {
-        std::pair<int, int> temp = {snake_body[0].first, snake_body[0].second};
-        switch (getchar())
+        const int c = getchar();
+
+        std::pair temp = {snake_body[0].first, snake_body[0].second};
+
+        switch (c)
         {
-        // W key
-        case 119:
+        // up
+        // case arrow_up:
+        case w_key:
+            // last_input = c;
             snake_body[0].second -= 1; // player position: y-1
             break;
-        // S key
-        case 115:
+        // down
+        // case arrow_down:
+        case s_key:
+            // last_input = c;
             snake_body[0].second += 1; // player position: y+1
             break;
-        // A key
-        case 97:
+        // left
+        // case arrow_left:
+        case a_key:
+            // last_input = c;
             snake_body[0].first -= 1; // player position: x-1
             break;
-        // D key
-        case 100:
+        // right
+        // case arrow_right:
+        case d_key:
+            // last_input = c;
             snake_body[0].first += 1; // player position: x+1
             break;
-        default: ;
+        default: break;
         }
-
         if (checkForCollisions(snake_body, area_dimensions))
         {
             game_over_status = true;
@@ -424,12 +449,18 @@ int main()
             }
             // when arr is shifted to the right, we need to insert temp to the 1st index
             // of the arr to have proper display and update of nodes, otherwise we'd have
-            // 2 identical nodes (0 and 1) and would not render on 1st point but instead from 2nd
+            // 2 identical nodes (0 and 1) and would not show snake length properly on 1st point,
+            // but instead it'll start from 2nd point
             snake_body[1] = temp;
         }
         renderArea(area_dimensions, snake_body, temp, fruit_position, fruit_type, points,
                    game_over_status, debug_mode);
-        if (game_over_status) break;
+        if (game_over_status)
+        {
+            setUnbufferedInput(old_tc, true);
+            break;
+        }
+        // sleep(1);
     }
     return 0;
 }
