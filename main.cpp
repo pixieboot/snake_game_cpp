@@ -10,6 +10,9 @@ constexpr int d_key = 100;
 constexpr int y_key = 121;
 constexpr int n_key = 110;
 
+termios old_tc{}, new_tc{};
+int custom_terminal_mode = 0;
+
 // will be added later, currently this is platform specific for unix sys
 // constexpr int arrow_up = 65; // 91 65 27
 // constexpr int arrow_down = 66; // 91 66 27
@@ -132,7 +135,7 @@ bool alignGameOverText(
     const int text_size = (a_width - static_cast<int>(text.size())) / 2;
     int row{};
 
-    // "GAME OVER" & "Continue" alignment
+    // "GAME OVER"
     if (text_fd == 1)
     {
         row = a_height / 2;
@@ -141,7 +144,7 @@ bool alignGameOverText(
     {
         row = a_height / 2 + 1;
     }
-    else // "Continue" alignment
+    else // "Retry" alignment
     {
         row = a_height / 2 + 2;
     }
@@ -194,7 +197,7 @@ char showGameOverStats(
 
     constexpr std::string_view game_over_text = "GAME OVER";
     const std::string points_text = "Points: " + std::to_string(points);
-    constexpr std::string_view continue_text = "Continue? [Y/n]";
+    constexpr std::string_view retry_text = "Retry? [y/n]";
 
     // prints "GAME OVER"
     if (alignGameOverText(i, j, area_dimensions, game_over_text, 1))
@@ -210,11 +213,11 @@ char showGameOverStats(
         return points_text[j - col];
     }
 
-    // prints "Continue" text
-    if (alignGameOverText(i, j, area_dimensions, continue_text, 0))
+    // prints "Retry" text
+    if (alignGameOverText(i, j, area_dimensions, retry_text, 0))
     {
-        const int col = (a_width - static_cast<int>(continue_text.size())) / 2;
-        return continue_text[j - col];
+        const int col = (a_width - static_cast<int>(retry_text.size())) / 2;
+        return retry_text[j - col];
     }
     return ' ';
 }
@@ -437,6 +440,20 @@ void enableRawMode(termios& tc)
 }
 
 /*
+ * Saves the old terminal settings to be restored on program exit
+ *
+ * @return void;
+ */
+void setTerminalInRawMode()
+{
+    // set terminal settings for non-blocking unbuffered input
+    tcgetattr(STDIN_FILENO, &old_tc);
+    new_tc = old_tc; // save old terminal settings to restore it on game over
+    custom_terminal_mode = 1;
+    enableRawMode(new_tc);
+}
+
+/*
  *  Restores default terminal settings that were taken
  *  at the beginning of the program
  *
@@ -447,6 +464,13 @@ void restoreTerminal(const termios& tc)
     tcsetattr(STDIN_FILENO, TCSANOW, &tc);
 }
 
+/*
+ *  Reads input with timeout, if user doesn't press anything within
+ *  the given timeout, the snake will continue its own movement
+ *  based on the last user input direction
+ *
+ *  @return int: keyboard key input
+ */
 int readInputWithTimeout(const int ms)
 {
     fd_set rfds;
@@ -517,14 +541,15 @@ bool isOppositeDirection(const int cd, const int ci)
 
 int main()
 {
-    // set terminal settings for non-blocking unbuffered input
-    termios old_tc{};
-    tcgetattr(STDIN_FILENO, &old_tc);
-    termios new_tc = old_tc; // save old terminal settings to restore it on game over
-    enableRawMode(new_tc);
+    // lazy workaround solution for game replayability for terminal settings
+    // without this it would completely override the original terminal settings
+    if (custom_terminal_mode == 0)
+    {
+        setTerminalInRawMode();
+    }
 
     // set debug mode
-    constexpr bool debug_mode = true;
+    constexpr bool debug_mode = false;
 
     // init area dimensions 80x21
     constexpr std::pair<int, int> area_dimensions = std::make_pair(80, 21);
@@ -594,10 +619,12 @@ int main()
         {
             snake_body[0] = {-1, -1};
             fruit_position = {-1, -1};
-            restoreTerminal(old_tc);
             if (c == y_key)
             {
                 game_over_status = false;
+                // this is a very lazy and bad approach for game replayability
+                // a different solution must be applied which means entire main()
+                // needs to be reconstructed and changed, will be fixed in the future
                 main();
             }
             if (c == n_key)
