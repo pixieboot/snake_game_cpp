@@ -14,5 +14,9 @@ https://github.com/user-attachments/assets/2ff52dab-3415-47fb-bb47-d41d65886297
 Known bugs:   
 * snake can go the opposite direction if the kb key is held trigger game over even when its not visually showing it
 * game over screen can still accept kb inputs and increase points
-* pressing any key will speed up the snake as it will refresh while loop because the if for wsad will skip the invalid keys[Screencast_20260129_233522.webm]
+* pressing any key will speed up the snake as it will refresh while loop because the if for wsad will skip the invalid keys and loop continues
 
+Future plans:
+* adding arrow key support
+* rewritting replayability logic
+* figuring out better rendering logic
