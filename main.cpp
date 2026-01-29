@@ -7,6 +7,8 @@ constexpr int w_key = 119;
 constexpr int s_key = 115;
 constexpr int a_key = 97;
 constexpr int d_key = 100;
+constexpr int y_key = 121;
+constexpr int n_key = 110;
 
 // will be added later, currently this is platform specific for unix sys
 // constexpr int arrow_up = 65; // 91 65 27
@@ -123,24 +125,53 @@ bool alignGameOverText(
     const int j,
     const std::pair<int, int>& area_dimensions,
     const std::string_view text,
-    const int is_game_over_text)
+    const int text_fd)
 {
     const int a_width = area_dimensions.first;
     const int a_height = area_dimensions.second;
     const int text_size = (a_width - static_cast<int>(text.size())) / 2;
     int row{};
 
-    // "GAME OVER" alignment
-    if (is_game_over_text == 1)
+    // "GAME OVER" & "Continue" alignment
+    if (text_fd == 1)
     {
         row = a_height / 2;
     }
-    else // "Points: x" alignment
+    else if (text_fd == 2) // "Points: x" alignment
     {
         row = a_height / 2 + 1;
     }
+    else // "Continue" alignment
+    {
+        row = a_height / 2 + 2;
+    }
 
     return i == row && j >= text_size && j < text_size + static_cast<int>(text.size());
+}
+
+/*
+ *  Returns chars of strings to display start game text
+ *
+ *  @param i & j: for loop iterators
+ *  @param std::pair<int, int>& area_dimensions: std::pair consisting of X and Y coordinates of area
+ *  @param int current direction: if current direction is 0, text will be displayed
+ *  @return char: returns a char that needs to be printer to the called
+ */
+char showGameStartText(
+    const int i,
+    const int j,
+    const std::pair<int, int>& area_dimensions)
+{
+    const int a_width = area_dimensions.first;
+
+    constexpr std::string_view start_text = "Press WSAD to start!";
+
+    if (alignGameOverText(i, j, area_dimensions, start_text, 1))
+    {
+        const int col = (a_width - static_cast<int>(start_text.size())) / 2;
+        return start_text[j - col];
+    }
+    return ' ';
 }
 
 /*
@@ -163,6 +194,7 @@ char showGameOverStats(
 
     constexpr std::string_view game_over_text = "GAME OVER";
     const std::string points_text = "Points: " + std::to_string(points);
+    constexpr std::string_view continue_text = "Continue? [Y/n]";
 
     // prints "GAME OVER"
     if (alignGameOverText(i, j, area_dimensions, game_over_text, 1))
@@ -172,10 +204,17 @@ char showGameOverStats(
     }
 
     // prints "Points: X"
-    if (alignGameOverText(i, j, area_dimensions, points_text, 0))
+    if (alignGameOverText(i, j, area_dimensions, points_text, 2))
     {
         const int col = (a_width - static_cast<int>(points_text.size())) / 2;
         return points_text[j - col];
+    }
+
+    // prints "Continue" text
+    if (alignGameOverText(i, j, area_dimensions, continue_text, 0))
+    {
+        const int col = (a_width - static_cast<int>(continue_text.size())) / 2;
+        return continue_text[j - col];
     }
     return ' ';
 }
@@ -196,6 +235,7 @@ char renderCells(
     const int j,
     const std::pair<int, int>& area_dimensions,
     const std::vector<std::pair<int, int>>& player_position,
+    const int current_direction,
     const std::pair<int, int>& fruit_position,
     const char fruit_type,
     const bool game_over_status,
@@ -247,6 +287,11 @@ char renderCells(
         {
             return 'o';
         }
+    }
+    // game start text
+    if (current_direction == 0)
+    {
+        return showGameStartText(i, j, area_dimensions);
     }
     return ' ';
 }
@@ -315,7 +360,8 @@ void renderArea(
     {
         for (int j = 0; j < a_width; j++)
         {
-            std::cout << renderCells(i, j, area_dimensions, player_position, fruit_position, fruit_type,
+            std::cout << renderCells(i, j, area_dimensions, player_position, current_direction, fruit_position,
+                                     fruit_type,
                                      game_over_status, points);
         }
         std::cout << '\n';
@@ -546,7 +592,18 @@ int main()
                    game_over_status, debug_mode, current_direction, c);
         if (game_over_status)
         {
-            break;
+            snake_body[0] = {-1, -1};
+            fruit_position = {-1, -1};
+            restoreTerminal(old_tc);
+            if (c == y_key)
+            {
+                game_over_status = false;
+                main();
+            }
+            if (c == n_key)
+            {
+                break;
+            }
         }
     }
     restoreTerminal(old_tc);
