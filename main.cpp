@@ -8,11 +8,11 @@ constexpr int s_key = 115;
 constexpr int a_key = 97;
 constexpr int d_key = 100;
 
-// to be added
-// constexpr int arrow_up = 65;
-// constexpr int arrow_down = 66;
-// constexpr int arrow_left = 68;
-// constexpr int arrow_right = 67;
+// will be added later, currently this is platform specific for unix sys
+// constexpr int arrow_up = 65; // 91 65 27
+// constexpr int arrow_down = 66; // 91 66 27
+// constexpr int arrow_left = 68; // 91 68 27
+// constexpr int arrow_right = 67; // 91 67 27
 
 /*
  * Debugging mode with couts, if debug mode is set to "true"
@@ -394,7 +394,7 @@ void enableRawMode(termios& tc)
  *  Restores default terminal settings that were taken
  *  at the beginning of the program
  *
- *  @return void nullptr;
+ *  @return void;
  */
 void restoreTerminal(const termios& tc)
 {
@@ -454,6 +454,21 @@ std::pair<int, int> moveSnake(std::pair<int, int>& player_position, const int di
     return player_position;
 }
 
+/*
+ *  Checks if the user is trying to go the opposite
+ *  direction from the current direction of the snake
+ *
+ *  @return bool;
+ */
+bool isOppositeDirection(const int cd, const int ci)
+{
+    return (
+        (cd == w_key && ci == s_key) ||
+        (cd == s_key && ci == w_key) ||
+        (cd == d_key && ci == a_key) ||
+        (cd == a_key && ci == d_key));
+}
+
 int main()
 {
     // set terminal settings for non-blocking unbuffered input
@@ -492,10 +507,13 @@ int main()
     {
         const int c = readInputWithTimeout(180);
         std::pair temp = {snake_body[0].first, snake_body[0].second};
-        if (c != -1)
+        if (c == w_key || c == s_key || c == d_key || c == a_key)
         {
-            current_direction = c;
-            snake_body[0] = moveSnake(snake_body[0], c);
+            if (!isOppositeDirection(current_direction, c))
+            {
+                current_direction = c;
+                snake_body[0] = moveSnake(snake_body[0], c);
+            }
         }
         else
         {
