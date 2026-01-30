@@ -12,21 +12,21 @@ Video demo:
 https://github.com/user-attachments/assets/2ff52dab-3415-47fb-bb47-d41d65886297
 
 # Compiling and running:   
-Linux:   
+**Linux:**   
 1. `cd [path to the dir where main.cpp and random.h are located]`   
 2. `g++ main.cpp -o snake`
 
 Or you can directly download the executable file from [here](https://github.com/pixieboot/snake_game_cpp/releases/tag/v0.1.0) and run it from your terminal
 
-Windows:    
-> will be added in the future   
+**Windows:**    
+> to be added (currently unavailable because of termios.h lib which is only for *nix systems)   
 
-Known bugs:   
+**Known bugs:**   
 * snake can go the opposite direction if the kb key is held trigger game over even when its not visually showing it
 * game over screen can still accept kb inputs and increase points
 * pressing any key will speed up the snake as it will refresh while loop because the if for wsad will skip the invalid keys and loop continues
 
-Future plans:
+**Future plans:**
 * adding arrow key support > (this was already attempted but the issue is arrow keys are 3 characters (e.g. on my system: 91 67 27, it might be different on others systems) long, and the only temporary solution was calling getchar() func 2 additional times and checking with "ifs" if its the right character since it had to go through first escape character. A better approach and solution needs to be applied, and ncurses lib seems to elevate this issue for devs, will be considered)
 * rewritting replayability logic > (for this an entire code structure needs to be rewritten and resorted as calling main recursively is a disaster on its own but i've put it right now as a lazy solution for demoing the game yay)
 * figuring out better rendering logic > (not always but when debugging the terminal flickers while when running on an actual terminal its fine, will dig further into this)
