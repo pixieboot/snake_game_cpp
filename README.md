@@ -36,11 +36,6 @@ B)
 **Windows:**
 > To be added (currently win is not possible because of "termios.h" lib which is only for *nix systems)
 
-**Known bugs:**
-
-* Pressing any key that has singe ascii character will speed up the snake as it will refresh while loop because if
-  for WSAD will skip the invalid keys and continue the while loop
-
 **Future plans:**
 
 * **Adding arrow key support >** This was already attempted but the issue is arrow keys are 3 characters (e.g. on my

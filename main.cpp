@@ -2,6 +2,8 @@
 #include <iostream>
 #include <termios.h>
 #include <unistd.h>
+#include <chrono>
+#include <thread>
 
 constexpr int w_key = 119;
 constexpr int s_key = 115;
@@ -527,6 +529,7 @@ bool isOppositeDirection(const int cd, const int ci)
         (cd == a_key && ci == d_key);
 }
 
+// Game variables struct
 struct gameVariables
 {
     // init area dimensions 80x21
@@ -572,47 +575,69 @@ void playerMovement(gameVariables& gv, const int c)
     }
 }
 
+/* Main time step frame driven game logic
+ *
+ * @param gameVariable: passed game variable struct to init
+ * @return void;
+ */
 void runGame(gameVariables& gv)
 {
+    using clock = std::chrono::steady_clock;
+    using seconds = std::chrono::duration<double>;
+    auto last_frame = clock::now();
+    seconds accumulator{0};
+    seconds timestep{0.100};
+    const seconds acceleration{0.005};
+
     // init first render view
     renderArea(gv.area_dimensions, gv.snake_body, {0, 0}, gv.fruit_position, gv.fruit_type, gv.points,
                gv.game_over_status, gv.debug_mode, 0, 0);
     while (true)
     {
-        const int c = readInputWithTimeout(180);
+        const int c = readInputWithTimeout(0);
         playerMovement(gv, c);
-        std::pair temp = {gv.snake_body[0].first, gv.snake_body[0].second};
-        gv.snake_body[0] = moveSnake(gv.snake_body[0], gv.current_direction);
 
-        if (checkForCollisions(gv.snake_body, gv.area_dimensions))
+        auto now = clock::now();
+        const seconds frame_time = now - last_frame;
+        last_frame = now;
+        accumulator += frame_time;
+
+        while (accumulator >= timestep)
         {
-            gv.fruit_position = {-1, -1};
-            gv.game_over_status = true;
-        }
-        if (isFruitEaten(gv.snake_body[0], gv.fruit_position))
-        {
-            gv.points++;
-            gv.fruit_type = getRandFruitType(Random::get(1, 6));
-            gv.fruit_position = getRandFruitPos(gv.area_dimensions);
-            gv.snake_body.emplace_back(temp);
-        }
-        if (gv.points)
-        {
-            for (int i = gv.points; i > 0; --i)
+            accumulator -= timestep;
+            std::pair temp = {gv.snake_body[0].first, gv.snake_body[0].second};
+            gv.snake_body[0] = moveSnake(gv.snake_body[0], gv.current_direction);
+            if (checkForCollisions(gv.snake_body, gv.area_dimensions))
             {
-                gv.snake_body[i] = gv.snake_body[i - 1];
+                gv.fruit_position = {-1, -1};
+                gv.game_over_status = true;
             }
-            // when arr is shifted to the right, we need to insert temp to the 1st index
-            // of the arr to have proper display and update of nodes, otherwise we'd have
-            // 2 identical nodes (0 and 1) and would not show snake length properly on 1st point,
-            // but instead it'll start from 2nd point
-            gv.snake_body[1] = temp;
+            if (isFruitEaten(gv.snake_body[0], gv.fruit_position))
+            {
+                timestep -= acceleration;
+                gv.points++;
+                gv.fruit_type = getRandFruitType(Random::get(1, 6));
+                gv.fruit_position = getRandFruitPos(gv.area_dimensions);
+                gv.snake_body.emplace_back(temp);
+            }
+            if (gv.points)
+            {
+                for (int i = gv.points; i > 0; --i)
+                {
+                    gv.snake_body[i] = gv.snake_body[i - 1];
+                }
+                // when arr is shifted to the right, we need to insert temp to the 1st index
+                // of the arr to have proper display and update of nodes, otherwise we'd have
+                // 2 identical nodes (0 and 1) and would not show snake length properly on 1st point,
+                // but instead it'll start from 2nd point
+                gv.snake_body[1] = temp;
+            }
+            renderArea(gv.area_dimensions, gv.snake_body, temp, gv.fruit_position, gv.fruit_type, gv.points,
+                       gv.game_over_status, gv.debug_mode, gv.current_direction, c);
         }
-        renderArea(gv.area_dimensions, gv.snake_body, temp, gv.fruit_position, gv.fruit_type, gv.points,
-                   gv.game_over_status, gv.debug_mode, gv.current_direction, c);
         if (gv.game_over_status)
         {
-            while (const int k = readInputWithTimeout(1))
+            while (const int k = readInputWithTimeout(0))
             {
                 if (k == y_key)
                 {
@@ -626,6 +651,7 @@ void runGame(gameVariables& gv)
             }
             break;
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -644,3 +670,4 @@ int main()
     restoreTerminal(old_tc);
     return 0;
 }
+
