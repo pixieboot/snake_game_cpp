@@ -10,9 +10,6 @@ constexpr int d_key = 100;
 constexpr int y_key = 121;
 constexpr int n_key = 110;
 
-termios old_tc{}, new_tc{};
-int custom_terminal_mode = 0;
-
 // will be added later, currently this is platform specific for unix sys
 // constexpr int arrow_up = 65; // 91 65 27
 // constexpr int arrow_down = 66; // 91 66 27
@@ -76,9 +73,6 @@ char getRandFruitType(const int x)
  *  Spawns a fruit in a random spot, also checks if the fruit
  *  and the player are in the same position, if so the fruit
  *  spawn coordinates will be re-randomized
- *
- *  NOTE: in the future refine the logic to base the randomness of the fruit
- *  from the player pos which should reduce the if checking statement
  *
  *  @param std::pair<int, int>& area_dimensions: std::pair consisting of X and Y dimensions for the area
  *  @param std::pair<int, int>& player_position: std::pair consisting of X and Y coordinates of the player
@@ -165,13 +159,10 @@ char showGameStartText(
     const int j,
     const std::pair<int, int>& area_dimensions)
 {
-    const int a_width = area_dimensions.first;
-
-    constexpr std::string_view start_text = "Press WSAD to start!";
-
-    if (alignGameOverText(i, j, area_dimensions, start_text, 1))
+    if (constexpr std::string_view start_text = "Press WSAD to start!"; alignGameOverText(
+        i, j, area_dimensions, start_text, 1))
     {
-        const int col = (a_width - static_cast<int>(start_text.size())) / 2;
+        const int col = (area_dimensions.first - static_cast<int>(start_text.size())) / 2;
         return start_text[j - col];
     }
     return ' ';
@@ -387,11 +378,7 @@ bool isFruitEaten(
     const int f_x = fruit_position.first;
     const int f_y = fruit_position.second;
 
-    if (p_x == f_x && p_y == f_y)
-    {
-        return true;
-    }
-    return false;
+    return p_x == f_x && p_y == f_y;
 }
 
 /*
@@ -442,15 +429,16 @@ void enableRawMode(termios& tc)
 /*
  * Saves the old terminal settings to be restored on program exit
  *
- * @return void;
+ * @return termios: old terminal settings
  */
-void setTerminalInRawMode()
+termios setTerminalInRawMode()
 {
+    termios old_tc{};
     // set terminal settings for non-blocking unbuffered input
     tcgetattr(STDIN_FILENO, &old_tc);
-    new_tc = old_tc; // save old terminal settings to restore it on game over
-    custom_terminal_mode = 1;
+    termios new_tc = old_tc; // save old terminal settings to restore it on game over
     enableRawMode(new_tc);
+    return old_tc;
 }
 
 /*
@@ -532,105 +520,125 @@ std::pair<int, int> moveSnake(std::pair<int, int>& player_position, const int di
  */
 bool isOppositeDirection(const int cd, const int ci)
 {
-    return (
+    return
         (cd == w_key && ci == s_key) ||
         (cd == s_key && ci == w_key) ||
         (cd == d_key && ci == a_key) ||
-        (cd == a_key && ci == d_key));
+        (cd == a_key && ci == d_key);
 }
 
-int main()
+struct gameVariables
 {
-    // lazy workaround solution for game replayability for terminal settings
-    // without this it would completely override the original terminal settings
-    if (custom_terminal_mode == 0)
-    {
-        setTerminalInRawMode();
-    }
-
-    // set debug mode
-    constexpr bool debug_mode = false;
-
     // init area dimensions 80x21
-    constexpr std::pair<int, int> area_dimensions = std::make_pair(80, 21);
+    std::pair<int, int> area_dimensions = std::make_pair(80, 21);
 
     // snake length initialized with player spawn position
-    std::vector snake_body{initPlayerPos(area_dimensions)};
+    std::vector<std::pair<int, int>> snake_body{initPlayerPos(area_dimensions)};
 
-    // init random fruit type and position // change later for the whole body checking
+    // init random fruit position
     std::pair<int, int> fruit_position = getRandFruitPos(area_dimensions);
-    char fruit_type = getRandFruitType(Random::get(1, 6));
 
     // init points
     int points = 0;
 
-    // init game over status
-    bool game_over_status = false;
-
     // init snake direction
     int current_direction = 0;
 
-    // init first render view
-    renderArea(area_dimensions, snake_body, {0, 0}, fruit_position, fruit_type, points,
-               game_over_status, debug_mode, 0, 0);
+    // set debug mode
+    bool debug_mode = false;
 
+    // init game over status
+    bool game_over_status = false;
+
+    // get random fruit type
+    char fruit_type = getRandFruitType(Random::get(1, 6));
+};
+
+/*
+ *  Player movement controller, only registers WSAD keys,
+ *  if the player tries to go the opposite way of the current
+ *  snake path, will skip and nothing will happen
+ *
+ *  @return void;
+ */
+void playerMovement(gameVariables& gv, const int c)
+{
+    if (c == w_key || c == s_key || c == d_key || c == a_key)
+    {
+        if (!isOppositeDirection(gv.current_direction, c))
+        {
+            gv.current_direction = c;
+        }
+    }
+}
+
+void runGame(gameVariables& gv)
+{
+    // init first render view
+    renderArea(gv.area_dimensions, gv.snake_body, {0, 0}, gv.fruit_position, gv.fruit_type, gv.points,
+               gv.game_over_status, gv.debug_mode, 0, 0);
     while (true)
     {
         const int c = readInputWithTimeout(180);
-        std::pair temp = {snake_body[0].first, snake_body[0].second};
-        if (c == w_key || c == s_key || c == d_key || c == a_key)
+        playerMovement(gv, c);
+        std::pair temp = {gv.snake_body[0].first, gv.snake_body[0].second};
+        gv.snake_body[0] = moveSnake(gv.snake_body[0], gv.current_direction);
+
+        if (checkForCollisions(gv.snake_body, gv.area_dimensions))
         {
-            if (!isOppositeDirection(current_direction, c))
+            gv.fruit_position = {-1, -1};
+            gv.game_over_status = true;
+        }
+        if (isFruitEaten(gv.snake_body[0], gv.fruit_position))
+        {
+            gv.points++;
+            gv.fruit_type = getRandFruitType(Random::get(1, 6));
+            gv.fruit_position = getRandFruitPos(gv.area_dimensions);
+            gv.snake_body.emplace_back(temp);
+        }
+        if (gv.points)
+        {
+            for (int i = gv.points; i > 0; --i)
             {
-                current_direction = c;
-                snake_body[0] = moveSnake(snake_body[0], c);
-            }
-        }
-        else
-        {
-            snake_body[0] = moveSnake(snake_body[0], current_direction);
-        }
-        if (checkForCollisions(snake_body, area_dimensions))
-        {
-            game_over_status = true;
-        }
-        if (isFruitEaten(snake_body[0], fruit_position))
-        {
-            points++;
-            fruit_type = getRandFruitType(Random::get(1, 6));
-            fruit_position = getRandFruitPos(area_dimensions);
-            snake_body.emplace_back(temp);
-        }
-        if (points)
-        {
-            for (int i = points; i > 0; --i)
-            {
-                snake_body[i] = snake_body[i - 1];
+                gv.snake_body[i] = gv.snake_body[i - 1];
             }
             // when arr is shifted to the right, we need to insert temp to the 1st index
             // of the arr to have proper display and update of nodes, otherwise we'd have
             // 2 identical nodes (0 and 1) and would not show snake length properly on 1st point,
             // but instead it'll start from 2nd point
-            snake_body[1] = temp;
+            gv.snake_body[1] = temp;
         }
-        renderArea(area_dimensions, snake_body, temp, fruit_position, fruit_type, points,
-                   game_over_status, debug_mode, current_direction, c);
-        if (game_over_status)
+        renderArea(gv.area_dimensions, gv.snake_body, temp, gv.fruit_position, gv.fruit_type, gv.points,
+                   gv.game_over_status, gv.debug_mode, gv.current_direction, c);
+        if (gv.game_over_status)
         {
-            snake_body[0] = {-1, -1};
-            fruit_position = {-1, -1};
-            if (c == y_key)
+            while (const int k = readInputWithTimeout(1))
             {
-                game_over_status = false;
-                // this is a very lazy and bad approach for game replayability
-                // a different solution must be applied which means entire main()
-                // needs to be reconstructed and changed, will be fixed in the future
-                main();
+                if (k == y_key)
+                {
+                    gv.game_over_status = false;
+                    break;
+                }
+                if (k == n_key)
+                {
+                    break;
+                }
             }
-            if (c == n_key)
-            {
-                break;
-            }
+            break;
+        }
+    }
+}
+
+int main()
+{
+    const termios old_tc = setTerminalInRawMode();
+    while (true)
+    {
+        gameVariables gv{};
+        runGame(gv);
+        if (gv.game_over_status)
+        {
+            break;
         }
     }
     restoreTerminal(old_tc);
