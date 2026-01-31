@@ -38,8 +38,6 @@ B)
 
 **Known bugs:**
 
-* Snake can go pseudo-like the opposite direction if the kb key is held, it will trigger game over event
-* Game over screen can still accept kb inputs and increase points (e.g. holding A during game over screen)
 * Pressing any key that has singe ascii character will speed up the snake as it will refresh while loop because if
   for WSAD will skip the invalid keys and continue the while loop
 
@@ -50,8 +48,3 @@ B)
   func 2 additional times and checking with "ifs" if it's the right character since it had to go through first escape
   character. A better approach and solution needs to be applied, and ncurses lib seems to elevate this issue for devs,
   its implementation will be considered in the future.
-* **Rewriting replayability logic >** For this, an entire code structure needs to be rewritten and resorted as calling
-  main() recursively is a disaster on its own but, I've put it right now as a lazy solution for demoing the game.
-* **Figuring out better rendering logic >** Not always but when debugging the terminal flickers meanwhile when running
-  on
-  an actual terminal its fine, will dig further into this.
