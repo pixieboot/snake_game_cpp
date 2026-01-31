@@ -12,12 +12,6 @@ constexpr int d_key = 100;
 constexpr int y_key = 121;
 constexpr int n_key = 110;
 
-// will be added later, currently this is platform specific for unix sys
-// constexpr int arrow_up = 65; // 91 65 27
-// constexpr int arrow_down = 66; // 91 66 27
-// constexpr int arrow_left = 68; // 91 68 27
-// constexpr int arrow_right = 67; // 91 67 27
-
 /*
  * Debugging mode with couts, if debug mode is set to "true"
  * it will print the current runtime values
@@ -557,6 +551,20 @@ struct gameVariables
     char fruit_type = getRandFruitType(Random::get(1, 6));
 };
 
+// Time stepper struct
+struct time_stepping
+{
+    using clock = std::chrono::steady_clock;
+    using seconds = std::chrono::duration<double>;
+    using time_point = std::chrono::steady_clock::time_point;
+
+    seconds accumulator{0};
+    seconds timestep{0.100};
+    const seconds acceleration{0.003};
+
+    static time_point now() { return clock::now(); }
+};
+
 /*
  *  Player movement controller, only registers WSAD keys,
  *  if the player tries to go the opposite way of the current
@@ -582,13 +590,8 @@ void playerMovement(gameVariables& gv, const int c)
  */
 void runGame(gameVariables& gv)
 {
-    using clock = std::chrono::steady_clock;
-    using seconds = std::chrono::duration<double>;
-    auto last_frame = clock::now();
-    seconds accumulator{0};
-    seconds timestep{0.100};
-    const seconds acceleration{0.005};
-
+    time_stepping t{};
+    std::chrono::steady_clock::time_point last_frame = time_stepping::now();
     // init first render view
     renderArea(gv.area_dimensions, gv.snake_body, {0, 0}, gv.fruit_position, gv.fruit_type, gv.points,
                gv.game_over_status, gv.debug_mode, 0, 0);
@@ -597,14 +600,14 @@ void runGame(gameVariables& gv)
         const int c = readInputWithTimeout(0);
         playerMovement(gv, c);
 
-        auto now = clock::now();
-        const seconds frame_time = now - last_frame;
+        auto now = time_stepping::now();
+        const std::chrono::duration<double> frame_time = now - last_frame;
         last_frame = now;
-        accumulator += frame_time;
+        t.accumulator += frame_time;
 
-        while (accumulator >= timestep)
+        while (t.accumulator >= t.timestep)
         {
-            accumulator -= timestep;
+            t.accumulator -= t.timestep;
             std::pair temp = {gv.snake_body[0].first, gv.snake_body[0].second};
             gv.snake_body[0] = moveSnake(gv.snake_body[0], gv.current_direction);
             if (checkForCollisions(gv.snake_body, gv.area_dimensions))
@@ -614,7 +617,7 @@ void runGame(gameVariables& gv)
             }
             if (isFruitEaten(gv.snake_body[0], gv.fruit_position))
             {
-                timestep -= acceleration;
+                t.timestep -= t.acceleration;
                 gv.points++;
                 gv.fruit_type = getRandFruitType(Random::get(1, 6));
                 gv.fruit_position = getRandFruitPos(gv.area_dimensions);
