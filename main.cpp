@@ -483,23 +483,15 @@ std::pair<int, int> moveSnake(std::pair<int, int>& player_position, const int di
 {
     switch (direction)
     {
-    // up
-    // case arrow_up:
     case w_key:
         player_position.second -= 1; // player position: y-1
         break;
-    // down
-    // case arrow_down:
     case s_key:
         player_position.second += 1; // player position: y+1
         break;
-    // left
-    // case arrow_left:
     case a_key:
         player_position.first -= 1; // player position: x-1
         break;
-    // right
-    // case arrow_right:
     case d_key:
         player_position.first += 1; // player position: x+1
         break;
@@ -524,7 +516,7 @@ bool isOppositeDirection(const int cd, const int ci)
 }
 
 // Game variables struct
-struct gameVariables
+struct GameVariables
 {
     // init area dimensions 80x21
     std::pair<int, int> area_dimensions = std::make_pair(80, 21);
@@ -552,7 +544,7 @@ struct gameVariables
 };
 
 // Time stepper struct
-struct time_stepping
+struct TimeStepping
 {
     using clock = std::chrono::steady_clock;
     using seconds = std::chrono::duration<double>;
@@ -572,7 +564,7 @@ struct time_stepping
  *
  *  @return void;
  */
-void playerMovement(gameVariables& gv, const int c)
+void playerMovement(GameVariables& gv, const int c)
 {
     if (c == w_key || c == s_key || c == d_key || c == a_key)
     {
@@ -583,15 +575,15 @@ void playerMovement(gameVariables& gv, const int c)
     }
 }
 
-/* Main time step frame driven game logic
+/* Main time step frame driven game function
  *
  * @param gameVariable: passed game variable struct to init
  * @return void;
  */
-void runGame(gameVariables& gv)
+void runGame(GameVariables& gv)
 {
-    time_stepping t{};
-    std::chrono::steady_clock::time_point last_frame = time_stepping::now();
+    TimeStepping t{};
+    std::chrono::steady_clock::time_point last_frame = TimeStepping::now();
     // init first render view
     renderArea(gv.area_dimensions, gv.snake_body, {0, 0}, gv.fruit_position, gv.fruit_type, gv.points,
                gv.game_over_status, gv.debug_mode, 0, 0);
@@ -600,7 +592,7 @@ void runGame(gameVariables& gv)
         const int c = readInputWithTimeout(0);
         playerMovement(gv, c);
 
-        auto now = time_stepping::now();
+        auto now = TimeStepping::now();
         const std::chrono::duration<double> frame_time = now - last_frame;
         last_frame = now;
         t.accumulator += frame_time;
@@ -663,7 +655,7 @@ int main()
     const termios old_tc = setTerminalInRawMode();
     while (true)
     {
-        gameVariables gv{};
+        GameVariables gv{};
         runGame(gv);
         if (gv.game_over_status)
         {
@@ -673,4 +665,3 @@ int main()
     restoreTerminal(old_tc);
     return 0;
 }
-
