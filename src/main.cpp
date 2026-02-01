@@ -1,4 +1,4 @@
-#include "../random.h"
+#include "random.h"
 #include <iostream>
 #include <termios.h>
 #include <unistd.h>
