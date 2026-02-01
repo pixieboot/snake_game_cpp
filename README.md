@@ -17,7 +17,7 @@ run on *nix systems.
 **Debug mode:**   
 <img width="680" height="607" alt="debugmode" src="https://github.com/user-attachments/assets/f11dd1f4-bda9-4def-939a-4faeb54931f1" />
 
-Video demo can be seen [here](https://github.com/user-attachments/assets/9c32e5b0-d92b-4f5f-9c6b-c12dd7680e98)
+Gameplay video can be seen [here](https://github.com/user-attachments/assets/d0789f87-d76e-4645-bdd1-ebed5ba17ce3)
 
 ## Building and running:
 
@@ -31,7 +31,7 @@ Video demo can be seen [here](https://github.com/user-attachments/assets/9c32e5b
 *B)*
 
 1. You can directly download the executable file
-   from [here](https://github.com/pixieboot/snake_game_cpp/releases/tag/v0.1.0) and run it from the terminal
+   from [here](https://github.com/pixieboot/snake_game_cpp/releases/tag/v1.0.0) and run it from the terminal
 
 **Windows:**
 > To be added (currently Windows bin is not possible because of "termios.h" lib which is only for *nix systems)
