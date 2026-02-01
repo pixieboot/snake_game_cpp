@@ -1,7 +1,3 @@
-//
-// Created by kolya on 1/18/26.
-//
-
 #ifndef SNAKE_CPP_RANDOM_H
 #define SNAKE_CPP_RANDOM_H
 
